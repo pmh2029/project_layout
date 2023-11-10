@@ -1,4 +1,4 @@
-package server
+package infrastructure
 
 import (
 	"github.com/gin-contrib/cors"
