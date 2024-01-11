@@ -11,7 +11,7 @@ func GetInputAsMap(
 ) (map[string]interface{}, error) {
 	contentType := c.ContentType()
 	if contentType != "application/json" {
-		return nil, errors.New("abc")
+		return nil, errors.New("Content-Type must be application/json")
 	}
 
 	// Getting the body as a map

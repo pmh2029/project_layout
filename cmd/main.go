@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"project_layout/internal/migration"
+	"project_layout/configs"
 	"project_layout/internal/pkg/infrastructure"
+	"project_layout/internal/pkg/migration"
 	"project_layout/internal/pkg/mount"
 	"project_layout/pkg/database"
 	"project_layout/pkg/logger"
@@ -18,8 +19,14 @@ import (
 func main() {
 	logger := logger.NewCustomLogger()
 
+	config, err := configs.LoadConfig(".")
+	if err != nil {
+		logger.Fatalln(("Failed to load configuration."))
+		return
+	}
+
 	logger.Info("Init Database")
-	db, err := database.NewDB(logger)
+	db, err := database.NewDB(config, logger)
 	if err != nil {
 		logger.Fatalln("Failed to connect database.")
 		panic(err)
@@ -45,7 +52,7 @@ func main() {
 	}
 
 	server := &http.Server{
-		Addr:    ":8080",
+		Addr:    ":" + config.Port,
 		Handler: ginServer,
 	}
 
