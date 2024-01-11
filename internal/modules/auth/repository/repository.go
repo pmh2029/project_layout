@@ -5,7 +5,8 @@ import (
 	"gorm.io/gorm"
 )
 
-type UserRepositoryInterface interface{}
+type UserRepositoryInterface interface {
+}
 
 type UserRepository struct {
 	DB     *gorm.DB

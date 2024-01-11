@@ -10,5 +10,5 @@ func BindAuthRoutes(
 	authGroup *gin.RouterGroup,
 	h handler.HTTPHandler,
 ) {
-	authGroup.POST("/signup", h.SignUp())
+	authGroup.POST("/sign_up", h.SignUp())
 }

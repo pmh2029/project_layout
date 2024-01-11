@@ -20,7 +20,7 @@ func (h *AuthHandler) SignUp() gin.HandlerFunc {
 			return
 		}
 
-		validationResult, err := h.validator.Validate("sinup.json", input)
+		validationResult, err := h.validator.Validate("auth_signup.json", input)
 		if err != nil {
 			h.logger.Errorf("get validator error: %v", err)
 
