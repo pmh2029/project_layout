@@ -37,6 +37,7 @@ func NewGraphQLSchema(
 			Fields: graphql.Fields{
 				"signup": mutation.SignUpMutationType(
 					outputTypes,
+					repositories.UserRepo,
 					logger,
 				),
 			},

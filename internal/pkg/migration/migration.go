@@ -1,9 +1,9 @@
 package migration
 
 import (
-	"project_layout/internal/models"
-
 	"gorm.io/gorm"
+
+	"project_layout/internal/models"
 )
 
 func Migrate(

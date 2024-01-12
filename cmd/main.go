@@ -6,14 +6,15 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
+	"time"
+
 	"project_layout/configs"
 	"project_layout/internal/pkg/infrastructure"
 	"project_layout/internal/pkg/migration"
 	"project_layout/internal/pkg/mount"
 	"project_layout/pkg/database"
 	"project_layout/pkg/logger"
-	"syscall"
-	"time"
 )
 
 func main() {

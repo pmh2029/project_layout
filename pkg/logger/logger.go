@@ -16,6 +16,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 	gormLog "gorm.io/gorm/logger"
+	"gorm.io/gorm/utils"
 )
 
 type CustomLogger struct{}
@@ -41,7 +42,11 @@ func (logger *CustomLogger) Format(
 		slices.Sort(keys)
 		for _, k := range keys {
 			v := dataMap[k]
-			message = color.Magenta.Sprintf("[%s:%v]", k, v) + " " + message
+			if k != "" {
+				message = color.LightCyan.Sprintf("[%s:%v]", k, v) + " " + message
+			} else {
+				message = color.LightCyan.Sprintf("[%v]", v) + " " + message
+			}
 		}
 	} else {
 		message = entry.Message
@@ -88,7 +93,7 @@ func (logger *CustomLogger) Format(
 		)
 	} else {
 		newLog = fmt.Sprintf("%s %s %s\n",
-			color.Cyan.Sprint("["+timestamp+"]"),
+			color.LightBlue.Sprint("["+timestamp+"]"),
 			color.Info.Sprint("["+strings.ToUpper(entry.Level.String())+"]"),
 			entry.Message,
 		)
@@ -111,57 +116,74 @@ func NewCustomLogger() *logrus.Logger {
 
 // Logger based on logrus, but compatible with gorm
 type GormLogger struct {
-	logger *logrus.Entry
+	Logger                    *logrus.Entry
+	LogLevel                  gormLog.LogLevel
+	IgnoreRecordNotFoundError bool
+	SlowThreshold             time.Duration
+	FileWithLineNumField      string
 }
 
 func NewGormLogger(
-	logger *logrus.Logger,
-) GormLogger {
-	return GormLogger{
-		logger.WithField("service", "database"),
+	opts GormLogger,
+) *GormLogger {
+	if opts.Logger == nil {
+		opts.Logger = logrus.NewEntry(logrus.New())
+	}
+
+	if opts.LogLevel == 0 {
+		opts.LogLevel = gormLog.Silent
+	}
+	return &opts
+}
+
+func (l *GormLogger) LogMode(level gormLog.LogLevel) gormLog.Interface {
+	newlogger := *l
+	newlogger.LogLevel = level
+	return &newlogger
+}
+
+func (l *GormLogger) Info(ctx context.Context, s string, args ...interface{}) {
+	if l.LogLevel >= gormLog.Info {
+		l.Logger.WithContext(ctx).Infof(s, args...)
 	}
 }
 
-// We ignore this setting, because the log level is already decided by logrus
-func (logger GormLogger) LogMode(gormLog.LogLevel) gormLog.Interface {
-	return logger
+func (l *GormLogger) Warn(ctx context.Context, s string, args ...interface{}) {
+	if l.LogLevel >= gormLog.Warn {
+		l.Logger.WithContext(ctx).Warnf(s, args...)
+	}
 }
 
-func (logger GormLogger) Info(ctx context.Context, msg string, args ...interface{}) {
-	logger.logger.WithContext(ctx).Infof(msg, args...)
+func (l *GormLogger) Error(ctx context.Context, s string, args ...interface{}) {
+	if l.LogLevel >= gormLog.Error {
+		l.Logger.WithContext(ctx).Errorf(s, args...)
+	}
 }
 
-func (logger GormLogger) Warn(ctx context.Context, msg string, args ...interface{}) {
-	logger.logger.WithContext(ctx).Warnf(msg, args...)
-}
+func (l *GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
+	if l.LogLevel <= gormLog.Silent {
+		return
+	}
 
-func (logger GormLogger) Error(ctx context.Context, msg string, args ...interface{}) {
-	logger.logger.WithContext(ctx).Errorf(msg, args...)
-}
+	fields := logrus.Fields{}
+	fields[l.FileWithLineNumField] = filepath.Base(utils.FileWithLineNum())
 
-// We want the SQL logs with the info level, while it's defined as trace by gorm
-func (logger GormLogger) Trace(
-	ctx context.Context,
-	begin time.Time,
-	fc func() (sql string, rowsAffected int64),
-	err error,
-) {
 	sql, rows := fc()
-	duration := time.Since(begin)
-	logEntry := logger.logger.
-		WithContext(ctx).
-		WithField("duration", duration.String()).
-		WithField("rows", rows).
-		WithField("query", sql)
-
-	if err == nil {
-		logEntry.Info("Performed SQL Query")
+	if rows == -1 {
+		fields["rows"] = "-"
 	} else {
-		logEntry = logEntry.WithField("error", err)
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			logEntry.Info("Performed SQL Query")
-		} else {
-			logEntry.Error("SQL Query failed")
-		}
+		fields["rows"] = rows
+	}
+
+	elapsed := time.Since(begin)
+	fields["durations"] = elapsed
+
+	switch {
+	case err != nil && (!errors.Is(err, gorm.ErrRecordNotFound) || !l.IgnoreRecordNotFoundError) && l.LogLevel >= gormLog.Error:
+		l.Logger.WithContext(ctx).WithFields(fields).Errorf("[QUERY:%s] [ERROR:%v]", sql, err)
+	case l.SlowThreshold != 0 && elapsed > l.SlowThreshold && l.LogLevel >= gormLog.Warn:
+		l.Logger.WithContext(ctx).WithFields(fields).Warnf("[SLOW SQL >= %v], [QUERY: %s]", l.SlowThreshold, sql)
+	case l.LogLevel == gormLog.Info:
+		l.Logger.WithContext(ctx).WithFields(fields).Infof("[QUERY:%s]", sql)
 	}
 }
