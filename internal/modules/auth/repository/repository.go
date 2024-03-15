@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"math/rand"
 	"strconv"
 
@@ -11,7 +12,7 @@ import (
 )
 
 type UserRepositoryInterface interface {
-	CreateUser() error
+	CreateUser(ctx context.Context) error
 }
 
 type UserRepository struct {
@@ -29,8 +30,8 @@ func NewUserRepository(
 	}
 }
 
-func (r *UserRepository) CreateUser() error {
-	err := r.db.Create(&models.User{
+func (r *UserRepository) CreateUser(ctx context.Context) error {
+	err := r.db.WithContext(ctx).Create(&models.User{
 		Email:    strconv.Itoa(rand.Intn(9999999999999)),
 		Username: strconv.Itoa(rand.Intn(9999999999999)),
 	}).Error
@@ -39,11 +40,5 @@ func (r *UserRepository) CreateUser() error {
 
 		return err
 	}
-
-	var user []models.User
-	r.db.Find(&user)
-	r.db.Migrator().CurrentDatabase()
-
-	r.logger.Infoln("Created user: ", user, r.db.Migrator().CurrentDatabase())
 	return nil
 }

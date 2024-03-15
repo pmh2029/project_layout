@@ -14,18 +14,22 @@ import (
 	"project_layout/internal/pkg/migration"
 	"project_layout/internal/pkg/mount"
 	"project_layout/pkg/database"
-	"project_layout/pkg/logger"
+	loga "project_layout/pkg/logger"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	logger := logger.NewCustomLogger()
+	logger := loga.NewCustomLogger()
 
+	gin.SetMode(gin.ReleaseMode)
 	config, err := configs.LoadConfig(".")
 	if err != nil {
 		logger.Fatalln(("Failed to load configuration."))
 		return
 	}
 
+	logger.AddHook(&loga.RequestIDHook{})
 	logger.Info("Init Database")
 	db, err := database.NewDB(config, logger)
 	if err != nil {

@@ -16,7 +16,7 @@ func SignUpMutationType(
 	return &graphql.Field{
 		Type: types["auth"],
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-			err := userRepo.CreateUser()
+			err := userRepo.CreateUser(p.Context)
 			if err != nil {
 				return nil, err
 			}

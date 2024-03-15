@@ -19,6 +19,7 @@ func (h *AuthHandler) SignUp() gin.HandlerFunc {
 			})
 			return
 		}
+		h.logger.WithContext(c).Infoln(c.Query("query"))
 
 		validationResult, err := h.validator.Validate("auth_signup.json", input)
 		if err != nil {
@@ -38,6 +39,7 @@ func (h *AuthHandler) SignUp() gin.HandlerFunc {
 			return
 		}
 
+
 		result := graphql.Do(graphql.Params{
 			Schema:  h.graphql,
 			Context: c,
@@ -53,6 +55,7 @@ func (h *AuthHandler) SignUp() gin.HandlerFunc {
 		if result.HasErrors() {
 			h.logger.Infof("error: %v", result.Errors[0])
 		}
+		h.logger.WithContext(c).Infoln("ads;asdfopweirjpwqeirjqpweirj")
 
 		c.JSON(http.StatusOK, gin.H{
 			"data": result.Data.(map[string]interface{})["signup"],
